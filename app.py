@@ -5,13 +5,17 @@ from sqlalchemy import create_engine
 app = Flask(__name__)
 
 # 1. CONEXIÓN A POSTGRESQL
-usuario = 'postgres'
-contrasena = '1593*' # <-- Pon tu contraseña de nuevo
-host = 'localhost:5432'
-base_datos = 'PRUEBA'
+import os
+from sqlalchemy import create_engine
 
-CADENA_CONEXION = f'postgresql://{usuario}:{contrasena}@{host}/{base_datos}'
-motor = create_engine(CADENA_CONEXION)
+# Busca la llave de Render en la nube, o conéctate directamente a tu base de datos de Neon por defecto
+CADENA_CONEXION = os.environ.get(
+    'DATABASE_URL', 
+    'postgresql://neondb_owner:npg_9JOHoeYRDbW1@ep-ancient-scene-ahqerizb-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+)
+
+# Motor de conexión
+engine = create_engine(CADENA_CONEXION)
 
 @app.route('/')
 def inicio():
