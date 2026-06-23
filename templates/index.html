@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA ZAP - GEOESTADÍSTICA LONGITUDINAL</title>
+    <style>
+        :root {
+            --bg-base: #121620;
+            --text-main: #ffffff;
+            --text-dim: #8b9bb4;
+            --accent-cyan: #00e5ff;
+            --accent-purple: #9d4edd;
+            --accent-yellow: #ffb703;
+            --zap-red: #ff4d4d;
+            --non-zap-yellow: #fff3cd;
+            --card-bg: #1a1e2b;
+            --input-bg: #121620;
+            --success-green: #28a745;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-base);
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+        
+        /* NAVBAR */
+        .navbar {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.5rem 3rem; background: rgba(18, 22, 32, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); position: sticky; top: 0; z-index: 100;
+        }
+        .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: 1px; }
+        .logo .sabes { color: var(--accent-yellow); }
+        .logo .conecta { color: var(--accent-cyan); }
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-links a { color: var(--text-main); text-decoration: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: color 0.3s;}
+        .nav-links a:hover { color: var(--accent-cyan); }
+        .btn-outline { border: 1px solid var(--accent-yellow); padding: 0.5rem 1.5rem; border-radius: 20px; color: var(--accent-yellow) !important; background: transparent; cursor: pointer; transition: 0.3s;}
+        .btn-outline:hover { background: rgba(255, 183, 3, 0.1); }
+
+        .view { display: none; padding: 2rem 3rem; max-width: 1400px; margin: 0 auto; animation: fadeIn 0.4s ease-in-out;}
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* UTILIDADES Y FORMULARIOS */
+        .btn-gradient {
+            width: 100%; padding: 1rem; border: none; border-radius: 5px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+            color: white; font-weight: bold; font-size: 1rem; cursor: pointer; transition: opacity 0.3s, transform 0.2s;
+        }
+        .btn-gradient:hover { opacity: 0.9; transform: scale(1.02); }
+        .filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; background: var(--card-bg); padding: 1rem; border-radius: 8px; flex-wrap: wrap; align-items: center;}
+        .filters select, .filters input {
+            background: var(--input-bg); color: white; padding: 0.8rem 1rem; border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px; outline: none; flex: 1; font-size: 0.9rem; cursor: pointer; min-width: 180px;
+        }
+        .cvegeo-display {
+            background: rgba(0, 229, 255, 0.1); border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan); padding: 0.8rem; border-radius: 5px; font-family: monospace; font-weight: bold; text-align: center; min-width: 150px;
+        }
+
+        /* KPIS Y TABLAS */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .kpi-card { background: var(--card-bg); padding: 1.5rem; border-radius: 8px; border-left: 4px solid var(--accent-cyan); box-shadow: 0 4px 6px rgba(0,0,0,0.3);}
+        .kpi-title { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;}
+        .kpi-value { font-size: 1.8rem; font-weight: bold; margin-top: 0.5rem; }
+        
+        .consultas-section { background: var(--card-bg); padding: 2rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-top: 1.5rem; }
+        .consultas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;}
+        .btn-export { background: var(--success-green); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s;}
+        .btn-export:hover { background: #218838; transform: translateY(-2px);}
+        
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; text-align: left;}
+        th, td { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { background: rgba(0,0,0,0.3); color: var(--text-dim); text-transform: uppercase; font-size: 0.85rem;}
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85rem; text-transform: uppercase;}
+        .badge.alto { background: rgba(255, 77, 77, 0.2); color: #ff4d4d; }
+        .badge.medio { background: rgba(255, 183, 3, 0.2); color: #ffb703; }
+        .badge.bajo { background: rgba(75, 192, 192, 0.2); color: #4bc0c0; }
+
+        /* MÓDULO HISTÓRICO (NUEVO) */
+        .timeline-container {
+            background: var(--card-bg); border-radius: 8px; padding: 2rem; border: 1px solid rgba(255,255,255,0.05);
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 350px; position: relative;
+        }
+        .bars-wrapper { display: flex; align-items: flex-end; justify-content: space-around; width: 100%; height: 220px; padding-bottom: 20px; border-bottom: 2px dashed rgba(255,255,255,0.1);}
+        .hist-bar-group { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; width: 15%;}
+        .hist-bar { 
+            width: 100%; background: linear-gradient(to top, var(--accent-purple), var(--accent-cyan)); 
+            border-radius: 4px 4px 0 0; transition: height 0.8s ease-out; position: relative;
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
+        .hist-val { font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; color: var(--text-main); }
+        .hist-year { margin-top: 10px; font-weight: bold; color: var(--accent-yellow); font-size: 1.1rem;}
+        .trend-indicator { position: absolute; top: 20px; left: 20px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;}
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo"><span class="sabes">SISTEMA ZAP</span> <span class="conecta">/ IRSL LONGITUDINAL</span></div>
+        <div class="nav-links" id="nav-links" style="display: none;">
+            <a onclick="showView('dashboard')">PANEL ACTUAL</a>
+            <a onclick="showView('historico')">EVOLUCIÓN HISTÓRICA 📈</a>
+            <button class="btn-outline" onclick="logout()">Desconectar</button>
+        </div>
+    </nav>
+
+    <div id="view-login" class="view active">
+        <div style="display: flex; justify-content: center; margin-top: 5rem;">
+            <div style="background: var(--card-bg); padding: 3rem; border-radius: 10px; width: 450px; text-align: center; border: 1px solid var(--accent-cyan);">
+                <h1 style="margin:0; color:var(--accent-yellow); font-size:2.5rem;">ZAP<span style="color:var(--accent-cyan)"> DATA</span></h1>
+                <p style="color:var(--text-dim); margin-bottom: 2rem;">Integración Censal + IRSL Histórico (2000-2020)</p>
+                <button class="btn-gradient" onclick="login()">INICIAR SISTEMA DE CONSULTA</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="view">
+        <h2 style="margin-top:0; font-size:1.8rem;">Corte Actual (Censo + Marginación)</h2>
+        <div class="filters">
+            <select id="sel-entidad" onchange="cambioEntidad()"></select>
+            <select id="sel-municipio" onchange="cambioMunicipio()"></select>
+            <select id="sel-localidad" onchange="actualizarKPIs()"></select>
+            <div class="cvegeo-display" id="display-cvegeo">CVEGEO: --</div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card"><div class="kpi-title">Población Total</div><div class="kpi-value" id="kpi-pobtot">--</div></div>
+            <div class="kpi-card" style="border-color: var(--accent-purple);"><div class="kpi-title">Grado Marginación</div><div class="kpi-value" id="kpi-gm2020">--</div></div>
+            <div class="kpi-card" style="border-color: var(--zap-red);"><div class="kpi-title">Índice Rezago Long. (Actual)</div><div class="kpi-value" id="kpi-irsl">--</div></div>
+            <div class="kpi-card" style="border-color: var(--accent-yellow);"><div class="kpi-title">Viv. Sin Drenaje</div><div class="kpi-value" id="kpi-nodren">--</div></div>
+        </div>
+        
+        <div class="consultas-section">
+            <h3 style="color:var(--accent-cyan); margin-top:0;">Pasa al panel de "Evolución Histórica" para analizar las variables de la tabla IRSL a lo largo del tiempo.</h3>
+        </div>
+    </div>
+
+    <div id="view-historico" class="view">
+        <h2 style="margin-top:0; font-size:2rem; color:var(--accent-cyan);">📈 Evolución Longitudinal del Rezago Social</h2>
+        <p style="color:var(--text-dim);">Análisis comparativo de la base de datos IRSL a través de los quinquenios censales.</p>
+
+        <div class="filters" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);">
+            <select id="hist-nivel" onchange="actualizarSelectoresHistoricos()">
+                <option value="estado">Nivel: Estatal (irsl_estados)</option>
+                <option value="municipio" selected>Nivel: Municipal (irsl_municipios)</option>
+            </select>
+            <select id="hist-territorio" onchange="renderizarLineaTiempo()"></select>
+            <select id="hist-variable" onchange="renderizarLineaTiempo()" style="border-color: var(--accent-yellow);">
+                <option value="irs_long">Índice de Rezago Social Longitudinal (irs_long)</option>
+                <option value="pobtot">Población Total (pobtot)</option>
+                <option value="vph_nodren">% Viv. sin Drenaje (vph_nodren)</option>
+                <option value="p15ym_an">% Analfabetismo (p15ym_an)</option>
+                <option value="vph_s_agua">% Viv. sin Agua (vph_s_agua)</option>
+            </select>
+        </div>
+
+        <div class="grid-2">
+            <div class="timeline-container">
+                <div class="trend-indicator" id="hist-trend">
+                    <span style="color:var(--text-dim);">Tendencia General: </span> 
+                    <span id="trend-icon">--</span>
+                </div>
+                <div class="bars-wrapper">
+                    <div class="hist-bar-group"><div class="hist-val" id="val-2000">0</div><div class="hist-bar" id="bar-2000" style="height:0%;"></div><div class="hist-year">2000</div></div>
+                    <div class="hist-bar-group"><div class="hist-val" id="val-2005">0</div><div class="hist-bar" id="bar-2005" style="height:0%;"></div><div class="hist-year">2005</div></div>
+                    <div class="hist-bar-group"><div class="hist-val" id="val-2010">0</div><div class="hist-bar" id="bar-2010" style="height:0%;"></div><div class="hist-year">2010</div></div>
+                    <div class="hist-bar-group"><div class="hist-val" id="val-2015">0</div><div class="hist-bar" id="bar-2015" style="height:0%;"></div><div class="hist-year">2015</div></div>
+                    <div class="hist-bar-group"><div class="hist-val" id="val-2020">0</div><div class="hist-bar" id="bar-2020" style="height:0%;"></div><div class="hist-year">2020</div></div>
+                </div>
+            </div>
+
+            <div class="consultas-section" style="margin-top:0;">
+                <h3 style="margin-top:0; color:var(--accent-yellow);">Matriz de Datos Periodo a Periodo</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Periodo</th>
+                                <th>Grado (grs_long)</th>
+                                <th>Valor Registrado</th>
+                                <th>Variación vs Anterior</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hist-table-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dbMaestra = {};
+
+function showView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + viewId).classList.add('active');
+    window.scrollTo(0,0);
+    if(viewId === 'historico') actualizarSelectoresHistoricos();
+}
+
+async function login() {
+    document.getElementById('nav-links').style.display = 'flex';
+    showView('dashboard');
+    await cargarGeografiaReal();
+}
+
+function logout() {
+    document.getElementById('nav-links').style.display = 'none';
+    showView('login');
+}
+
+// 1. CARGA GEOGRÁFICA
+async function cargarGeografiaReal() {
+    try {
+        const response = await fetch('/api/geografia');
+        const data = await response.json();
+        
+        dbMaestra = {};
+        data.forEach(row => {
+            const ent = row.cve_ent.toString();
+            const mun = row.cve_mun.toString();
+            const loc = row.cve_loc.toString();
+            const ageb = row.ageb;
+
+            if(!dbMaestra[ent]) dbMaestra[ent] = { nom_ent: row.nom_ent, municipios: {} };
+            if(!dbMaestra[ent].municipios[mun]) dbMaestra[ent].municipios[mun] = { nom_mun: row.nom_mun, localidades: {} };
+            if(!dbMaestra[ent].municipios[mun].localidades[loc]) dbMaestra[ent].municipios[mun].localidades[loc] = { nom_loc: row.nom_loc, agebs: [] };
+            
+            if(ageb && !dbMaestra[ent].municipios[mun].localidades[loc].agebs.includes(ageb)) {
+                dbMaestra[ent].municipios[mun].localidades[loc].agebs.push(ageb);
+            }
+        });
+        inicializarSelectoresPrincipales();
+    } catch (error) {
+        console.error("Error cargando geografía:", error);
+    }
+}
+
+// 2. PANEL ACTUAL
+function inicializarSelectoresPrincipales() {
+    const selEnt = document.getElementById('sel-entidad');
+    selEnt.innerHTML = '';
+    for(let cve in dbMaestra) selEnt.add(new Option(`Entidad: ${cve} - ${dbMaestra[cve].nom_ent}`, cve));
+    cambioEntidad();
+}
+function cambioEntidad() {
+    const ent = document.getElementById('sel-entidad').value;
+    const selMun = document.getElementById('sel-municipio');
+    selMun.innerHTML = '';
+    for(let cve in dbMaestra[ent].municipios) selMun.add(new Option(`Mun: ${cve} - ${dbMaestra[ent].municipios[cve].nom_mun}`, cve));
+    cambioMunicipio();
+}
+function cambioMunicipio() {
+    const ent = document.getElementById('sel-entidad').value;
+    const mun = document.getElementById('sel-municipio').value;
+    const selLoc = document.getElementById('sel-localidad');
+    selLoc.innerHTML = '';
+    for(let cve in dbMaestra[ent].municipios[mun].localidades) selLoc.add(new Option(`Loc: ${cve} - ${dbMaestra[ent].municipios[mun].localidades[cve].nom_loc}`, cve));
+    actualizarKPIs();
+}
+async function actualizarKPIs() {
+    const ent = document.getElementById('sel-entidad').value;
+    const mun = document.getElementById('sel-municipio').value;
+    const loc = document.getElementById('sel-localidad').value;
+    // Omitimos AGEB para vista general, o forzamos el primer ageb disponible
+    const ageb = dbMaestra[ent].municipios[mun].localidades[loc].agebs[0] || '0000';
+    document.getElementById('display-cvegeo').innerText = `CVEGEO: ${ent.padStart(2,'0')}${mun.padStart(3,'0')}${loc.padStart(4,'0')}`;
+    
+    try {
+        const response = await fetch(`/api/kpis/${ent}/${mun}/${ageb}`);
+        const kpis = await response.json();
+        
+        document.getElementById('kpi-pobtot').innerText = (kpis.pobtot || 0).toLocaleString('es-MX');
+        const gm = kpis.gm_2020 || '--';
+        document.getElementById('kpi-gm2020').innerHTML = `<span class="badge ${gm === 'Bajo' || gm === 'Muy Bajo' ? 'bajo' : 'alto'}">${gm}</span>`;
+        document.getElementById('kpi-irsl').innerText = kpis.im_2020 ? kpis.im_2020.toFixed(2) : '--';
+        document.getElementById('kpi-nodren').innerText = kpis.vph_nodren || '--';
+    } catch (e) {}
+}
+
+// 3. PANEL HISTÓRICO (CONECTADO A LA BD REAL)
+function actualizarSelectoresHistoricos() {
+    const nivel = document.getElementById('hist-nivel').value;
+    const selTerritorio = document.getElementById('hist-territorio');
+    selTerritorio.innerHTML = '';
+    
+    const ent = document.getElementById('sel-entidad').value || Object.keys(dbMaestra)[0];
+
+    if(nivel === 'estado') {
+        selTerritorio.add(new Option(dbMaestra[ent].nom_ent, ent));
+    } else if (nivel === 'municipio') {
+        const municipios = dbMaestra[ent].municipios;
+        for(let cve in municipios) {
+            selTerritorio.add(new Option(municipios[cve].nom_mun, cve));
+        }
+    }
+    renderizarLineaTiempo();
+}
+
+async function renderizarLineaTiempo() {
+    const nivel = document.getElementById('hist-nivel').value;
+    const territorio = document.getElementById('hist-territorio').value;
+    const variable = document.getElementById('hist-variable').value;
+    const entidad = document.getElementById('sel-entidad').value || Object.keys(dbMaestra)[0];
+
+    try {
+        const response = await fetch(`/api/historico/${nivel}/${entidad}/${territorio}`);
+        const datosBD = await response.json();
+
+        // Convertimos el array de la BD a un objeto ordenado por año
+        let datosHistoricos = {};
+        datosBD.forEach(fila => {
+            datosHistoricos[fila.periodo] = fila;
+        });
+
+        const periodos = [2000, 2005, 2010, 2015, 2020];
+        const valores = [];
+        const tbody = document.getElementById('hist-table-body');
+        tbody.innerHTML = '';
+        let maxVal = 0;
+        
+        for (let i = 0; i < periodos.length; i++) {
+            const año = periodos[i];
+            // Si no hay datos para un año, ponemos 0
+            const dataAño = datosHistoricos[año] || { grs_long: 'N/D', [variable]: 0 }; 
+            const valor = dataAño[variable] || 0;
+            valores.push(valor);
+            
+            if (valor > maxVal) maxVal = valor;
+
+            let variacion = "--";
+            let colorVar = "var(--text-dim)";
+            if (i > 0) {
+                const diff = valor - valores[i-1];
+                const esCarencia = variable !== 'pobtot';
+                if(diff > 0) {
+                    variacion = `+${diff.toFixed(2)}`;
+                    colorVar = esCarencia ? "var(--zap-red)" : "var(--success-green)";
+                } else if (diff < 0) {
+                    variacion = diff.toFixed(2);
+                    colorVar = esCarencia ? "var(--success-green)" : "var(--zap-red)";
+                } else { variacion = "0.00"; }
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="font-weight:bold; color:var(--accent-yellow);">${año}</td>
+                <td><span class="badge ${dataAño.grs_long === 'Medio' || dataAño.grs_long === 'Alto' ? 'medio' : 'bajo'}">${dataAño.grs_long}</span></td>
+                <td style="font-weight:bold;">${variable === 'pobtot' ? valor.toLocaleString('es-MX') : valor.toFixed(2)}</td>
+                <td style="color:${colorVar}; font-weight:bold;">${variacion}</td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        // Gráficos CSS
+        for (let i = 0; i < periodos.length; i++) {
+            const año = periodos[i];
+            const valor = valores[i];
+            const heightPorcentaje = maxVal > 0 ? Math.max(10, (valor / maxVal) * 100) : 10;
+            
+            document.getElementById(`val-${año}`).innerText = variable === 'pobtot' ? valor.toLocaleString('es-MX') : valor.toFixed(1);
+            const bar = document.getElementById(`bar-${año}`);
+            bar.style.height = `${heightPorcentaje}%`;
+            
+            if(variable === 'pobtot') {
+                bar.style.background = 'linear-gradient(to top, #28a745, #85e09b)';
+                bar.style.boxShadow = '0 0 10px rgba(40, 167, 69, 0.2)';
+            } else {
+                bar.style.background = 'linear-gradient(to top, var(--accent-purple), var(--accent-cyan))';
+                bar.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.2)';
+            }
+        }
+
+        const valor2000 = valores[0];
+        const valor2020 = valores[4];
+        const esCarencia = variable !== 'pobtot';
+        const iconEl = document.getElementById('trend-icon');
+        
+        if (valor2020 < valor2000) {
+            iconEl.innerHTML = esCarencia ? "📉 Mejoría (Rezago a la baja)" : "📉 Descenso Poblacional";
+            iconEl.style.color = esCarencia ? "var(--success-green)" : "var(--zap-red)";
+        } else if (valor2020 > valor2000) {
+            iconEl.innerHTML = esCarencia ? "📈 Empeoramiento (Rezago al alza)" : "📈 Crecimiento Sostenido";
+            iconEl.style.color = esCarencia ? "var(--zap-red)" : "var(--success-green)";
+        } else {
+            iconEl.innerHTML = "➖ Sin cambios / Faltan datos";
+            iconEl.style.color = "var(--text-dim)";
+        }
+    } catch (e) { console.error("Error conectando a DB:", e); }
+}
+    </script>
+</body>
+</html>
